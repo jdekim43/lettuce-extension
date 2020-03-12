@@ -13,9 +13,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import kr.jadekim.redis.lettuce.codec.KeyPrefixStringCodec
 import java.io.Closeable
 import java.nio.ByteBuffer
 import java.time.Duration
+import kotlin.coroutines.coroutineContext
 
 class Redis(
     private val host: String,
@@ -179,15 +181,15 @@ class Redis(
         execute { publish(channel, message) }
     }
 
-    internal suspend fun <T> execute(statement: RedisAsyncCommands<String, String>.() -> RedisFuture<T>): T {
+    suspend fun <T> execute(statement: RedisAsyncCommands<String, String>.() -> RedisFuture<T>): T {
         return executeCommand { statement().asDeferred().await() }
     }
 
-    internal suspend fun <T> read(statement: RedisAsyncCommands<String, String>.() -> RedisFuture<T>): T {
+    suspend fun <T> read(statement: RedisAsyncCommands<String, String>.() -> RedisFuture<T>): T {
         return readCommand { statement().asDeferred().await() }
     }
 
-    internal suspend fun pipe(statement: suspend RedisAsyncCommands<String, String>.(MutableList<RedisFuture<*>>) -> Unit): List<Any> {
+    suspend fun pipe(statement: suspend RedisAsyncCommands<String, String>.(MutableList<RedisFuture<*>>) -> Unit): List<Any> {
         val commands = mutableListOf<RedisFuture<*>>()
         val connection = pool.acquire().asDeferred().await()
 
@@ -212,23 +214,12 @@ class Redis(
     }
 
     private suspend fun <T> executeCommand(statement: suspend RedisAsyncCommands<String, String>.() -> T): T {
-        return withContext(Dispatchers.IO) {
+        return withContext(coroutineContext + Dispatchers.IO) {
             mainConnection.async().statement()
         }
     }
 
     private suspend fun <T> readCommand(statement: suspend RedisAsyncCommands<String, String>.() -> T): T {
         return executeCommand(statement)
-    }
-
-    private class KeyPrefixStringCodec(val keyPrefix: String) : StringCodec(Charsets.UTF_8) {
-
-        override fun encodeKey(key: String?): ByteBuffer {
-            return super.encodeKey(keyPrefix + key)
-        }
-
-        override fun encodeKey(key: String?, target: ByteBuf?) {
-            super.encodeKey(keyPrefix + key, target)
-        }
     }
 }
