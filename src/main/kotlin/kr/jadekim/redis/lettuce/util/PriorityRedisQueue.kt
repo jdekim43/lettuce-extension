@@ -19,14 +19,16 @@ interface PrioritySuspendQueue<T> : SuspendQueue<T> {
 }
 
 class PriorityRedisQueue<T>(
-    private val redis: Redis,
-    redisKey: String,
-    typeRef: Class<T>
+        private val redis: Redis,
+        redisKey: String,
+        typeRef: Class<T>
 ) : RedisQueue<T>(redis, redisKey, typeRef), PrioritySuspendQueue<T> {
 
-    override suspend fun size(): Long = redis.zcard(redisKey)
+    override suspend fun size(): Long = redis { zcard(redisKey) }
 
-    override suspend fun clear() = redis.delete(redisKey)
+    override suspend fun clear() {
+        redis { del(redisKey) }
+    }
 
     @Suppress("UNCHECKED_CAST")
     override suspend fun pop(): T? {
@@ -39,51 +41,54 @@ class PriorityRedisQueue<T>(
     }
 
     override suspend fun peek(): T? {
-        return deserializeSafe(redis.zrange(redisKey, 0, 0).firstOrNull())
+        return deserializeSafe(redis { zrange(redisKey, 0, 0) }.firstOrNull())
     }
 
     override suspend fun push(value: T) {
-        redis.zadd(redisKey, ScoredValue.just(100.0, serialize(value)))
+        val serialized = ScoredValue.just(100.0, serialize(value))
+
+        redis { zadd(redisKey, serialized) }
     }
 
     override suspend fun push(values: List<T>) {
         val data = values.map { serialize(it) }
-            .map { ScoredValue.just(100.0, it) }
-            .toTypedArray()
+                .map { ScoredValue.just(100.0, it) }
+                .toTypedArray()
 
-        redis.zadd(redisKey, *data)
+        redis { zadd(redisKey, *data) }
     }
 
     override suspend fun push(value: T, score: Double) {
-        redis.zadd(redisKey, score, serialize(value))
+        val serialized = serialize(value)
+
+        redis { zadd(redisKey, score, serialized) }
     }
 
     override suspend fun push(vararg values: Pair<T, Double>) {
         val data = values
-            .map { ScoredValue.just(it.second, serialize(it.first)) }
-            .toTypedArray()
+                .map { ScoredValue.just(it.second, serialize(it.first)) }
+                .toTypedArray()
 
-        redis.zadd(redisKey, *data)
+        redis { zadd(redisKey, *data) }
     }
 
     override suspend fun slice(start: Long, stop: Long): List<T> {
-        return redis.zrange(redisKey, start, stop - 1).map { deserialize(it) }
+        return redis { zrange(redisKey, start, stop - 1) }.map { deserialize(it) }
     }
 
     override suspend fun get(idx: Long): T? {
-        return deserializeSafe(redis.zrange(redisKey, idx, idx).firstOrNull())
+        return deserializeSafe(redis { zrange(redisKey, idx, idx) }.firstOrNull())
     }
 
     override suspend fun elements(): List<T> {
-        return redis.zrange(redisKey, 0, -1)
-            .map { deserialize(it) }
+        return redis { zrange(redisKey, 0, -1) }
+                .map { deserialize(it) }
     }
 
     override suspend fun extend(collection: Collection<Pair<T, Double>>) {
         redis.pipe {
-            it.addAll(
-                collection.map { each -> zadd(redisKey, each.second, serialize(each.first)) }
-            )
+            collection.map { each -> zadd(redisKey, each.second, serialize(each.first)) }
+                    .also { values -> it.addAll(values) }
         }
     }
 }

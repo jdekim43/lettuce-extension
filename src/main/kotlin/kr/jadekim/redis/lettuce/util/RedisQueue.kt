@@ -22,32 +22,36 @@ interface SuspendQueue<T> {
 }
 
 open class RedisQueue<T>(
-    private val redis: Redis,
-    val redisKey: String,
-    private val typeRef: Class<T>
+        private val redis: Redis,
+        val redisKey: String,
+        private val typeRef: Class<T>
 ) : SuspendQueue<T> {
 
     protected val mapper = jacksonObjectMapper()
 
-    override suspend fun size() = redis.llen(redisKey)
+    override suspend fun size() = redis { llen(redisKey) }
 
     override suspend fun isEmpty() = size() == 0L
 
-    override suspend fun pop() = deserializeSafe(redis.rpop(redisKey))
+    override suspend fun pop() = deserializeSafe(redis { rpop(redisKey) })
 
     override suspend fun peek() = pop()
 
     override suspend fun push(value: T) {
-        redis.lpush(redisKey, serialize(value))
+        val serialized = serialize(value)
+
+        redis { lpush(redisKey, serialized) }
     }
 
     override suspend fun push(values: List<T>) {
         val serialized = values.map { serialize(it) }.toTypedArray()
 
-        redis.lpush(redisKey, *serialized)
+        redis { lpush(redisKey, *serialized) }
     }
 
-    override suspend fun clear() = redis.delete(redisKey)
+    override suspend fun clear() {
+        redis { del(redisKey) }
+    }
 
     protected open fun serialize(data: T): String {
         return mapper.writeValueAsString(data)
