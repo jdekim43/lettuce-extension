@@ -22,7 +22,7 @@ interface SuspendQueue<T> {
 }
 
 open class RedisQueue<T>(
-        private val redis: Redis,
+        private val redis: Redis<String, String>,
         val redisKey: String,
         private val typeRef: Class<T>
 ) : SuspendQueue<T> {

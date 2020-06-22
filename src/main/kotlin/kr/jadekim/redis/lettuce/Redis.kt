@@ -1,10 +1,12 @@
 package kr.jadekim.redis.lettuce
 
-import io.lettuce.core.*
+import io.lettuce.core.ClientOptions
+import io.lettuce.core.RedisClient
+import io.lettuce.core.RedisFuture
+import io.lettuce.core.RedisURI
 import io.lettuce.core.api.StatefulRedisConnection
 import io.lettuce.core.api.async.RedisAsyncCommands
 import io.lettuce.core.codec.RedisCodec
-import io.lettuce.core.masterreplica.MasterReplica
 import io.lettuce.core.pubsub.StatefulRedisPubSubConnection
 import io.lettuce.core.resource.DefaultClientResources
 import io.lettuce.core.support.AsyncConnectionPoolSupport
@@ -15,8 +17,11 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.future.asDeferred
 import kotlinx.coroutines.runBlocking
 import java.io.Closeable
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
+
+typealias StringKeyRedis<V> = Redis<String, V>
+
+typealias StringRedis = Redis<String, String>
 
 abstract class Redis<K, V>(
         protected val codec: RedisCodec<K, V>,
@@ -123,86 +128,8 @@ abstract class Redis<K, V>(
     }
 }
 
-open class StandaloneRedis<K, V>(
-        protected val uri: RedisURI,
-        codec: RedisCodec<K, V>,
-        poolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL
-) : Redis<K, V>(codec, poolSize) {
-
-    constructor(
-            host: String,
-            port: Int = 6379,
-            dbIndex: Int = 0,
-            password: String? = null,
-            codec: RedisCodec<K, V>,
-            poolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL
-    ) : this(RedisURI(host, port, dbIndex, password), codec, poolSize)
-
-    override fun connectForExecute(): ConnectionFuture<StatefulRedisConnection<K, V>> {
-        return client.connectAsync(codec, uri)
-    }
-
-    override fun connectPubSub(): CompletionStage<StatefulRedisPubSubConnection<K, V>> {
-        return client.connectPubSubAsync(codec, uri)
-    }
-
-    override fun connectForRead(): CompletionStage<StatefulRedisConnection<K, V>> {
-        return client.connectAsync(codec, uri)
-    }
-}
-
-open class ReplicaRedis<K, V>(
-        protected val masterUri: RedisURI,
-        codec: RedisCodec<K, V>,
-        executePoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL,
-        readPoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL
-) : Redis<K, V>(codec, executePoolSize, readPoolSize) {
-
-    private val nodes = mutableListOf(masterUri)
-
-    constructor(
-            host: String,
-            port: Int = 6379,
-            dbIndex: Int = 0,
-            password: String? = null,
-            codec: RedisCodec<K, V>,
-            executePoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL,
-            readPoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL
-    ) : this(RedisURI(host, port, dbIndex, password), codec, executePoolSize, readPoolSize)
-
-    fun replica(uri: RedisURI): ReplicaRedis<K, V> {
-        nodes.add(uri)
-
-        return this
-    }
-
-    fun replica(
-            host: String,
-            port: Int = 6379,
-            dbIndex: Int = 0,
-            password: String? = null
-    ): ReplicaRedis<K, V> = replica(RedisURI(host, port, dbIndex, password))
-
-    operator fun plus(uri: RedisURI): ReplicaRedis<K, V> = replica(uri)
-
-    operator fun plus(host: String) = replica(host)
-
-    override fun connectForExecute(): CompletionStage<StatefulRedisConnection<K, V>> {
-        return client.connectAsync(codec, masterUri)
-    }
-
-    @Suppress("UNCHECKED_CAST")
-    override fun connectForRead(): CompletionStage<StatefulRedisConnection<K, V>> {
-        return MasterReplica.connectAsync(client, codec, nodes) as CompletableFuture<StatefulRedisConnection<K, V>>
-    }
-
-    override fun connectPubSub(): CompletionStage<StatefulRedisPubSubConnection<K, V>> {
-        return client.connectPubSubAsync(codec, nodes.random())
-    }
-}
-
 @Suppress("FunctionName")
-private fun RedisURI(
+internal fun RedisURI(
         host: String,
         port: Int = 6379,
         dbIndex: Int = 0,

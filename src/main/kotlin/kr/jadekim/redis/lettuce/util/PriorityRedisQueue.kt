@@ -19,7 +19,7 @@ interface PrioritySuspendQueue<T> : SuspendQueue<T> {
 }
 
 class PriorityRedisQueue<T>(
-        private val redis: Redis,
+        private val redis: Redis<String, String>,
         redisKey: String,
         typeRef: Class<T>
 ) : RedisQueue<T>(redis, redisKey, typeRef), PrioritySuspendQueue<T> {
