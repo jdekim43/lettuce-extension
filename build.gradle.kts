@@ -9,7 +9,7 @@ plugins {
 
 val artifactName = "lettuce-extension"
 val artifactGroup = "kr.jadekim"
-val artifactVersion = "0.1.0"
+val artifactVersion = "0.2.0"
 group = artifactGroup
 version = artifactVersion
 
@@ -32,7 +32,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlinxCoroutineVersion")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
 
-    implementation("io.lettuce:lettuce-core:$lettuceVersion")
+    api("io.lettuce:lettuce-core:$lettuceVersion")
 
     implementation("org.apache.commons:commons-pool2:$commonsPool2Version")
 }
