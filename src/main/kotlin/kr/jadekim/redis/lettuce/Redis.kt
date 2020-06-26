@@ -43,23 +43,30 @@ abstract class Redis<K, V>(
         options = this@Redis.options
     }
 
-    protected val executePool = AsyncConnectionPoolSupport.createBoundedObjectPool(
-            { connectForExecute() },
-            poolConfig.maxIdle(executePoolSize)
-                    .maxTotal(executePoolSize)
-                    .build()
-    )
-
-    protected val readPool = if (readPoolSize == 0) {
-        executePool
-    } else {
+    protected val executePool by lazy {
         AsyncConnectionPoolSupport.createBoundedObjectPool(
-                { connectForRead() },
-                poolConfig.maxIdle(readPoolSize)
-                        .maxTotal(readPoolSize)
+                { connectForExecute() },
+                poolConfig.maxIdle(executePoolSize)
+                        .maxTotal(executePoolSize)
                         .build()
-        )
+        ).also { isCreatedExecutePool = true }
     }
+
+    protected val readPool by lazy {
+        if (readPoolSize == 0) {
+            executePool
+        } else {
+            AsyncConnectionPoolSupport.createBoundedObjectPool(
+                    { connectForRead() },
+                    poolConfig.maxIdle(readPoolSize)
+                            .maxTotal(readPoolSize)
+                            .build()
+            ).also { isCreatedReadPool = true }
+        }
+    }
+
+    private var isCreatedExecutePool = false
+    private var isCreatedReadPool = false
 
     abstract fun connectForExecute(): CompletionStage<StatefulRedisConnection<K, V>>
 
@@ -78,8 +85,12 @@ abstract class Redis<K, V>(
     }
 
     suspend fun closeAsync() {
-        executePool.closeAsync().asDeferred().await()
-        readPool.closeAsync().asDeferred().await()
+        if (isCreatedExecutePool) {
+            executePool.closeAsync().asDeferred().await()
+        }
+        if (isCreatedReadPool) {
+            readPool.closeAsync().asDeferred().await()
+        }
         client.shutdownAsync().asDeferred().await()
     }
 
