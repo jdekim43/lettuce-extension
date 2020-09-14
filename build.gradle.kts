@@ -2,14 +2,14 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import java.util.Date
 
 plugins {
-    kotlin("jvm") version "1.3.72"
+    kotlin("jvm") version "1.4.10"
     `maven-publish`
     id("com.jfrog.bintray") version "1.8.4"
 }
 
 val artifactName = "lettuce-extension"
 val artifactGroup = "kr.jadekim"
-val artifactVersion = "0.2.3"
+val artifactVersion = "0.2.4"
 group = artifactGroup
 version = artifactVersion
 
@@ -21,18 +21,16 @@ repositories {
 dependencies {
     val jLoggerVersion: String by project
     val kotlinxCoroutineVersion: String by project
+    val gsonVersion: String by project
     val lettuceVersion: String by project
     val commonsPool2Version: String by project
-    val jacksonVersion: String by project
-
-    implementation(kotlin("stdlib-jdk8"))
 
     implementation("kr.jadekim:j-logger:$jLoggerVersion")
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlinxCoroutineVersion")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonVersion")
-
     api("io.lettuce:lettuce-core:$lettuceVersion")
+
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlinxCoroutineVersion")
+    compileOnly("com.google.code.gson:gson:$gsonVersion")
 
     implementation("org.apache.commons:commons-pool2:$commonsPool2Version")
 }

@@ -1,6 +1,6 @@
 package kr.jadekim.redis.lettuce.util
 
-import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.google.gson.Gson
 import kr.jadekim.redis.lettuce.Redis
 import java.util.*
 
@@ -27,7 +27,7 @@ open class RedisQueue<T>(
         private val typeRef: Class<T>
 ) : SuspendQueue<T> {
 
-    protected val mapper = jacksonObjectMapper()
+    protected val gson = Gson()
 
     override suspend fun size() = redis { llen(redisKey) }
 
@@ -54,7 +54,7 @@ open class RedisQueue<T>(
     }
 
     protected open fun serialize(data: T): String {
-        return mapper.writeValueAsString(data)
+        return gson.toJson(data)
     }
 
     protected fun deserializeSafe(data: String?): T? {
@@ -66,7 +66,7 @@ open class RedisQueue<T>(
     }
 
     protected open fun deserialize(data: String): T {
-        return mapper.readValue(data, typeRef)
+        return gson.fromJson(data, typeRef)
     }
 }
 
