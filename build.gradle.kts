@@ -9,7 +9,7 @@ plugins {
 
 val artifactName = "lettuce-extension"
 val artifactGroup = "kr.jadekim"
-val artifactVersion = "0.2.4"
+val artifactVersion = "0.2.5"
 group = artifactGroup
 version = artifactVersion
 
@@ -21,7 +21,7 @@ repositories {
 dependencies {
     val jLoggerVersion: String by project
     val kotlinxCoroutineVersion: String by project
-    val gsonVersion: String by project
+    val gsonKotlinVersion: String by project
     val lettuceVersion: String by project
     val commonsPool2Version: String by project
 
@@ -30,7 +30,7 @@ dependencies {
     api("io.lettuce:lettuce-core:$lettuceVersion")
 
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:$kotlinxCoroutineVersion")
-    compileOnly("com.google.code.gson:gson:$gsonVersion")
+    compileOnly("kr.jadekim:gson-kotlin:$gsonKotlinVersion")
 
     implementation("org.apache.commons:commons-pool2:$commonsPool2Version")
 }

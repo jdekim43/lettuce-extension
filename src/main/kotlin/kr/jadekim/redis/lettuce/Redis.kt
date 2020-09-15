@@ -23,10 +23,12 @@ typealias StringKeyRedis<V> = Redis<String, V>
 
 typealias StringRedis = Redis<String, String>
 
+val LETTUCE_DEFAULT_POOL_SIZE = Runtime.getRuntime().availableProcessors() * 3
+
 abstract class Redis<K, V>(
         protected val codec: RedisCodec<K, V>,
-        executePoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL,
-        readPoolSize: Int = BoundedPoolConfig.DEFAULT_MAX_TOTAL
+        executePoolSize: Int = LETTUCE_DEFAULT_POOL_SIZE,
+        readPoolSize: Int = LETTUCE_DEFAULT_POOL_SIZE
 ) : Closeable {
 
     private val resourceConfig = DefaultClientResources.create()
