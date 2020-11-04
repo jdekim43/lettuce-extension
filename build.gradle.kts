@@ -9,7 +9,7 @@ plugins {
 
 val artifactName = "lettuce-extension"
 val artifactGroup = "kr.jadekim"
-val artifactVersion = "0.2.5"
+val artifactVersion = "0.2.6"
 group = artifactGroup
 version = artifactVersion
 
